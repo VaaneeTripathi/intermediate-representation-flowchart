@@ -1,0 +1,65 @@
+ {
+    "id": "2026-03-10T16:01:00Z",
+
+    "elements": {
+      "nodes": [
+        { "id": "n1", "shape": "rectangle", "text": "Instruction Memory", "position": { "x": -10, "y": 0 } },
+        { "id": "n2", "shape": "rectangle", "text": "Processor",   "position": { "x": 0, "y": 0 } },
+        { "id": "n3", "shape": "rectangle", "text": "Data Memory", "position": { "x": 10, "y": 0 } },
+        { "id": "n4", "shape": "rectangle",  "text": "I/O",   "position": { "x": 0,  "y": -10 } }
+        
+      ],
+      "connections": [
+        { "id": "c1", "source": "n1", "target": "n2", "direction": "bidirectional" },
+        { "id": "c2", "source": "n2", "target": "n3", "direction": "bidirectional"  },
+        { "id": "c3", "source": "n2", "target": "n4", "direction": "bidirectional"  },
+        { "id": "c4", "source": "n1", "target": "n2", "direction": "forward"  }
+      ]
+    },
+
+    "structure": {
+      "hierarchy": [
+        {
+          "id": "g1",
+          "parent": null,
+          "children": ["n1", "n2", "n3", "n4"]
+        }
+      ]
+    },
+
+    "state": {
+      "crossLinks": [],
+      "compacted": {
+        "detailLevel": "full",
+        "collapsedGroups": [],
+        "summaries": [
+          { "groupId": "g1", "summary": "The flowchart shows the structure and relationsips in the harvard micro-architecture" }
+        ]
+      },
+      "boardState": "Single flowchart on the board, fully expanded, with two legible annotations and one stray symbol"
+    },
+
+
+
+    "semantics": {
+      "narrative": {
+        "overview": "A flowchart that expresses the Harvard Micro-Architecture",
+        "purpose": "Used in University of Calgary Lecture 1 of Introduction to Computer Organisation to introduce architectural systems",
+        "dialogue": "The instructor is explaining what Harvard Micro-Architecture is, why is it important. It is what is going to be focused on in the class",
+        "walkthrough": [
+          { "elementId": "n1", "narration": "a harvard micro architecture separates instruction memory from data memory and so instruction memory is where our program is stored as the name suggests this is the series of machine language instructions generated from our program" },
+          { "elementId": "n2", "narration": "that are fed into the processor and executed by the processor separate from instruction memory" },
+          { "elementId": "n3", "narration": "is the second memory block that we're going to refer to as data memory data memory is basically for storing variables" },
+          { "elementId": "n4", "narration": "finally we have one more block for our i o devices" }
+        ]
+      },
+
+      "symbols": [
+        {"symbol": "arrow", "meaning": "referring to Data Memroy", "applicableTo": "n3" }
+      ],
+
+      "annotations": [
+        {"id": "a1", "target": "n1", "annotationType": "arrow", "content": "Program"}
+      ]
+    }
+  }
