@@ -1,0 +1,63 @@
+ {
+    "id": "2026-03-10T16:01:00Z",
+
+    "elements": {
+      "nodes": [
+        { "id": "n1", "shape": "rectangle", "text": "Computer", "position": { "x": 0, "y": 0 } },
+        { "id": "n2", "shape": "rectangle", "text": "Screen",   "position": { "x": 0, "y": -10 } },
+        { "id": "n3", "shape": "rectangle", "text": "Keyboard", "position": { "x": 20, "y": -10 } },
+        { "id": "n4", "shape": "rectangle",  "text": "Mouse",   "position": { "x": 25,  "y": -2 } },
+        { "id": "n5", "shape": "rectangle",  "text": "Speakers", "position": { "x": 25, "y": 10 } }
+        
+      ],
+      "connections": [
+        { "id": "c1", "source": "n1", "target": "n2" },
+        { "id": "c2", "source": "n1", "target": "n3" },
+        { "id": "c3", "source": "n1", "target": "n4" },
+        { "id": "c4", "source": "n1", "target": "n5" }
+      ]
+    },
+
+    "structure": {
+      "hierarchy": [
+        {
+          "id": "g1",
+          "parent": "n1",
+          "children": ["n2", "n3", "n4", "n5"]
+        }
+      ]
+    },
+
+    "state": {
+      "crossLinks": [],
+      "compacted": {
+        "detailLevel": "full",
+        "collapsedGroups": [],
+        "summaries": [
+          { "groupId": "g1", "summary": "The flowchart shows a computer and connected nodes reflect common computer accessories and peripherals" }
+        ]
+      },
+      "boardState": "Single flowchart on the board, fully expanded, no active annotations"
+    },
+
+
+
+    "semantics": {
+      "narrative": {
+        "overview": "A flowchart that expresses the peripherals that a computer usually has.",
+        "purpose": "Used in University of Calgary Lecture 1 of Introduction to Computer Organisation to introduce computer systems from the User's perspective",
+        "dialogue": "The instructor is explaining what a personal computer could use",
+        "walkthrough": [
+          { "elementId": "n1", "narration": "So there was the personal computer, this box is the main c" },
+          { "elementId": "n2", "narration": "We can attach it to screen, that allows us to display information " },
+          { "elementId": "n3", "narration": "We connect a keyboard to the computer that allows us to send inputs into the computer" },
+          { "elementId": "n4", "narration": "Same thing with a mouse or a keypad" },
+          { "elementId": "n5", "narration": "And we probably might have a speaker" }
+        ]
+      },
+
+      "symbols": [],
+
+      "annotations": []
+    }
+  }
