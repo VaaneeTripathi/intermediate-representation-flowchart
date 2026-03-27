@@ -1,0 +1,82 @@
+ {
+    "id": "2026-03-10T17:29:00Z",
+
+    "elements": {
+      "nodes": [
+        { "id": "n1", "shape": "other", "text": "null", "position": { "x": 0, "y": 40 } },
+        { "id": "n2", "shape": "rectangle", "text": "LB",   "position": { "x": 0, "y": 20} },
+        { "id": "n3", "shape": "rectangle", "text": "www1",   "position": { "x": -5, "y": 0} },
+        { "id": "n4", "shape": "rectangle", "text": "ww2",   "position": { "x": 5, "y": 0} },
+        { "id": "n5", "shape": "rectangle", "text": "db1",   "position": { "x": -5, "y": -20} },
+        { "id": "n6", "shape": "rectangle", "text": "db2",   "position": { "x": -5, "y": -20} }
+        
+      ],
+      "connections": [
+        { "id": "c1", "source": "n1", "target": "n2", "direction": "none" },
+        { "id": "c2", "source": "n1", "target": "n2", "direction": "none"  },
+        { "id": "c3", "source": "n2", "target": "n3", "direction": "none"  },
+        { "id": "c4", "source": "n2", "target": "n4", "direction": "none"  },
+        { "id": "c5", "source": "n3", "target": "n5", "direction": "none"  },
+        { "id": "c6", "source": "n4", "target": "n6", "direction": "none"  },
+        { "id": "c7", "source": "n5", "target": "n6", "direction": "none"  }
+      ]
+    },
+
+    "structure": {
+      "hierarchy": [
+        {
+          "id": "g1",
+          "parent": "n1",
+          "children": [ "n2", "n3", "n4", "n5", "n6"]
+        },
+                {
+          "id": "g2",
+          "parent": "n2",
+          "children": ["n3", "n5"]
+        },
+                {
+          "id": "g3",
+          "parent": "n2",
+          "children": ["n4", "n6"]
+        },
+                {
+          "id": "g4",
+          "parent": "n3",
+          "children": [ "n5"]
+        },
+                        {
+          "id": "g5",
+          "parent": "n4",
+          "children": [ "n6"]
+        }
+      ]
+    },
+
+    "state": {
+      "crossLinks": [],
+      "compacted": {
+        "detailLevel": "full",
+        "collapsedGroups": [],
+        "summaries": [
+          { "groupId": "g1", "summary": "A cloud component attached to an LB node, which stands for Load Balancer" },
+          { "groupId": "g2", "summary": "The LB node connecting to ww1 and further to db1" },
+          { "groupId": "g3", "summary": "The LB node connecting to ww2 and further to db2" },
+          { "groupId": "g4", "summary": "The ww1 node connecting to db1" },
+          { "groupId": "g5", "summary": "The ww2 node connecting to db2" }
+          
+        ]
+      },
+      "boardState": "There is a single flow-chart on the board, with interconnected nodes representing a database system over the internet"
+    },
+
+
+
+    "semantics": {
+
+      "symbols": [
+        {"symbol": "null" }
+      ],
+
+      "annotations": []
+    }
+  }

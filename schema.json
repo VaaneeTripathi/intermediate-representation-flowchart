@@ -45,7 +45,7 @@
                     "other"
                   ]
                 },
-                "text": { "type": "string" },
+                "text": { "type": ["string", "null"] },
                 "position": { "$ref": "#/$defs/position" },
                 "visual": { "$ref": "#/$defs/visualAttrs" }
               }
@@ -206,59 +206,26 @@
 
       "semantics": {
         "type": "object",
-        "description": "Meaning, interpretation, and commentary layers for consumption",
+        "description": "Context on supplementary visual guides to aid semantic understanding",
         "additionalProperties": false,
         "properties": {
-
-          "narrative": {
-            "type": "object",
-            "description": "Context for the flowchart",
-            "additionalProperties": false,
-            "properties": {
-              "overview": {
-                "type": "string",
-                "description": "High-level description of what this flowchart represents"
-              },
-              "purpose": {
-                "type": "string",
-                "description": "Why this flowchart exists in the learning material"
-              },
-              "dialogue": {
-                "type": "string",
-                "description": "Current context in which this flowchart is being talked about"
-              },
-              "walkthrough": {
-                "type": "array",
-                "description": "Ordered narrative steps for guided screen reader traversal",
-                "items": {
-                  "type": "object",
-                  "required": ["elementId", "narration"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "elementId": { "type": "string" },
-                    "narration": { "type": "string" }
-                  }
-                }
-              }
-            }
-          },
-
+            
           "symbols": {
-            "type": "array",
+            "type": ["array", "null"],
             "description": "Semantic meaning of shapes and visual conventions, defined once as a lookup table",
             "items": {
               "type": "object",
               "required": ["symbol", "meaning"],
               "additionalProperties": false,
               "properties": {
-                "symbol": { "type": "string" },
+                "symbol": { "type":"string"},
                 "meaning": {
                   "type": "string",
                   "description": "What this symbol represents (e.g., 'diamond' means 'decision point')"
                 },
                 "applicableTo": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": { "type": ["string", "null"] },
                   "description": "IDs of elements using this symbol"
                 }
               }
@@ -266,7 +233,7 @@
           },
 
           "annotations": {
-            "type": "array",
+            "type": ["array", "null"],
             "description": "Interpretive overlays on elements — highlighting, emphasis, instructor commentary",
             "items": {
               "type": "object",
@@ -301,6 +268,8 @@
         }
       }
     },
+    
+
 
     "$defs": {
       "position": {
@@ -313,7 +282,7 @@
         }
       },
       "visualAttrs": {
-        "type": "object",
+        "type": ["object", "null"],
         "description": "Visual properties of nodes and connections",
         "additionalProperties": false,
         "properties": {
