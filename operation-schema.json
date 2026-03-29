@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.example.org/operation-schema/v1",
+  "title": "Flowchart Operation Analysis",
+  "description": "Schema for analysis of flowchart operations detected in lecture videos.",
+  "type": "object",
+  "required": ["metadata", "analysis"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/DocumentMetadata"
+    },
+    "reasoning_process": {
+      "type": ["string", "null"],
+      "description": "Agentic pipeline's intermediate reasoning trace stored as a raw string. Null when no reasoning steps were recorded, or absent in basic pipeline."
+    },
+    "analysis": {
+      "$ref": "#/$defs/Analysis"
+    }
+  },
+  "$defs": {
+    "DocumentMetadata": {
+      "type": "object",
+      "description": "Top-level metadata about the analysis run.",
+      "required": ["video_file", "frame_rate", "model", "analysis_timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "video_file": {
+          "type": "string",
+          "description": "Filename of the source video."
+        },
+        "frame_rate": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Frame rate (fps) at which the video was sampled before being sent to the model. Provenance only — operations reference timestamps, not frame numbers."
+        },
+        "model": {
+          "type": "string",
+          "description": "LLM model identifier used for analysis."
+        },
+        "analysis_type": {
+          "type": "string",
+          "description": "Pipeline variant. Present only in agentic analyses.",
+          "examples": ["agentic_vision"]
+        },
+        "analysis_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when the analysis was produced.",
+          "examples": ["2026-03-07T09:17:58Z"]
+        },
+        "reasoning_steps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of agentic reasoning steps executed. Present only in agentic analyses."
+        }
+      }
+    },
+
+    "Analysis": {
+      "type": "object",
+      "description": "The core analysis output containing detected operations and summary.",
+      "required": ["metadata", "operations", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/AnalysisMetadata"
+        },
+        "operations": {
+          "type": "array",
+          "description": "Chronologically ordered list of detected flowchart operations.",
+          "items": {
+            "$ref": "#/$defs/Operation"
+          }
+        },
+        "summary": {
+          "$ref": "#/$defs/Summary"
+        }
+      }
+    },
+
+    "AnalysisMetadata": {
+      "type": "object",
+      "description": "Metadata about the analysis results themselves.",
+      "required": ["video_duration", "total_operations_detected", "analysis_confidence", "visibility_issues"],
+      "additionalProperties": false,
+      "properties": {
+        "video_duration": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "Total duration of the analyzed video segment in MM:SS format.",
+          "examples": ["09:34", "12:05", "20:53"]
+        },
+        "total_operations_detected": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of operations detected in the video."
+        },
+        "analysis_confidence": {
+          "$ref": "#/$defs/ConfidenceLevel"
+        },
+        "visibility_issues": {
+          "type": ["string", "null"],
+          "description": "Description of visibility problems encountered (e.g., glare, occlusion, low resolution). Null when no issues."
+        }
+      }
+    },
+
+    "ConfidenceLevel": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Confidence level for a classification or analysis."
+    },
+
+    "OperationType": {
+      "type": "string",
+      "enum": ["CREATION", "ADDITION", "HIGHLIGHTING", "ERASURE", "COMPLETE_ERASURE"],
+      "description": "The five-class taxonomy for flowchart operations. CREATION: initial drawing on blank surface. ADDITION: new content added to existing flowchart. HIGHLIGHTING: annotation/emphasis on existing elements. ERASURE: partial removal of flowchart elements. COMPLETE_ERASURE: full removal of entire flowchart."
+    },
+
+    "Operation": {
+      "type": "object",
+      "description": "A single detected flowchart operation with temporal bounds, classification, and evidence.",
+      "required": [
+        "operation_id",
+        "timestamp_start",
+        "timestamp_end",
+        "operation_type",
+        "confidence",
+        "physical_action",
+        "classification_reasoning",
+        "content_description",
+        "visual_evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sequential identifier for the operation within this analysis."
+        },
+        "timestamp_start": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}(\\.\\d{1,3})?$",
+          "description": "Start timestamp in MM:SS or MM:SS.mmm format.",
+          "examples": ["00:40", "01:14", "01:14.500"]
+        },
+        "timestamp_end": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}(\\.\\d{1,3})?$",
+          "description": "End timestamp in MM:SS or MM:SS.mmm format.",
+          "examples": ["01:56", "01:16", "01:16.250"]
+        },
+        "operation_type": {
+          "$ref": "#/$defs/OperationType"
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceLevel"
+        },
+        "physical_action": {
+          "$ref": "#/$defs/PhysicalAction"
+        },
+        "classification_reasoning": {
+          "$ref": "#/$defs/ClassificationReasoning"
+        },
+        "content_description": {
+          "$ref": "#/$defs/ContentDescription"
+        },
+        "visual_evidence": {
+          "$ref": "#/$defs/VisualEvidence"
+        }
+      }
+    },
+
+    "PhysicalAction": {
+      "type": "object",
+      "description": "What the instructor physically did during this operation.",
+      "required": ["description", "tool_used"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Natural language description of the physical drawing/erasing action."
+        },
+        "tool_used": {
+          "type": "string",
+          "enum": ["marker", "digital pen", "eraser", "pointer", "slide transition", "other"],
+          "description": "The instrument or mechanism used."
+        }
+      }
+    },
+
+    "ClassificationReasoning": {
+      "type": "object",
+      "description": "Justification for the assigned operation_type.",
+      "required": ["criteria_met", "distinguishing_features", "edge_cases_considered"],
+      "additionalProperties": false,
+      "properties": {
+        "criteria_met": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Taxonomy criteria that were satisfied to justify the classification."
+        },
+        "distinguishing_features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Key features that distinguish this operation from similar types."
+        },
+        "edge_cases_considered": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ambiguities or edge cases the model considered during classification."
+        }
+      }
+    },
+
+    "ContentDescription": {
+      "type": "object",
+      "description": "Semantic description of what was drawn, added, or removed.",
+      "required": ["semantic_content", "diagram_elements", "pedagogical_context"],
+      "additionalProperties": false,
+      "properties": {
+        "semantic_content": {
+          "type": "string",
+          "description": "High-level summary of the content's meaning."
+        },
+        "diagram_elements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of specific diagram elements involved (nodes, arrows, labels, shapes). May be empty for erasure operations."
+        },
+        "pedagogical_context": {
+          "type": "string",
+          "description": "How this operation fits into the lecture's teaching flow."
+        }
+      }
+    },
+
+    "VisualEvidence": {
+      "type": "object",
+      "description": "Before/after visual state and optional frame references.",
+      "required": ["before_state", "after_state"],
+      "additionalProperties": false,
+      "properties": {
+        "before_state": {
+          "type": "string",
+          "description": "Description of the visual state before the operation."
+        },
+        "after_state": {
+          "type": "string",
+          "description": "Description of the visual state after the operation."
+        },
+        "frame_references": {
+          "type": "object",
+          "description": "Specific frame timestamps referenced as evidence. Optional — not all analyses produce this.",
+          "required": ["start", "end"],
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "type": "string",
+              "pattern": "^\\d{2}:\\d{2}(\\.\\d{1,3})?$",
+              "description": "Timestamp of the evidence start frame."
+            },
+            "end": {
+              "type": "string",
+              "pattern": "^\\d{2}:\\d{2}(\\.\\d{1,3})?$",
+              "description": "Timestamp of the evidence end frame."
+            }
+          }
+        }
+      }
+    },
+
+    "Summary": {
+      "type": "object",
+      "description": "Aggregate counts and qualitative observations for the full analysis.",
+      "required": [
+        "creation_count",
+        "addition_count",
+        "highlighting_count",
+        "erasure_count",
+        "complete_erasure_count",
+        "key_observations",
+        "challenges_encountered"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "creation_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the number of operations with operation_type CREATION."
+        },
+        "addition_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the number of operations with operation_type ADDITION."
+        },
+        "highlighting_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the number of operations with operation_type HIGHLIGHTING."
+        },
+        "erasure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the number of operations with operation_type ERASURE."
+        },
+        "complete_erasure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal the number of operations with operation_type COMPLETE_ERASURE."
+        },
+        "key_observations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Notable patterns or behaviors observed across the video."
+        },
+        "challenges_encountered": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ambiguities or difficulties the model faced during analysis."
+        }
+      }
+    }
+  }
+}
