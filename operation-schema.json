@@ -38,11 +38,6 @@
           "type": "string",
           "description": "LLM model identifier used for analysis."
         },
-        "analysis_type": {
-          "type": "string",
-          "description": "Pipeline variant. Present only in agentic analyses.",
-          "examples": ["agentic_vision"]
-        },
         "analysis_timestamp": {
           "type": "string",
           "format": "date-time",
