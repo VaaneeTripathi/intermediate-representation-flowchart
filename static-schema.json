@@ -204,6 +204,41 @@
         }
       },
 
+      "provenance": {
+        "type": "object",
+        "description": "AI generation metadata and quality signals. Optional — omit when the IR is hand-authored.",
+        "required": ["model", "confidence", "visibility_issues", "time_taken"],
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "LLM model identifier used to generate this IR."
+          },
+          "confidence": {
+            "$ref": "#/$defs/confidenceLevel"
+          },
+          "visibility_issues": {
+            "type": ["string", "null"],
+            "description": "Description of visibility problems that may have affected IR accuracy (e.g., glare, occlusion, low resolution). Null when no issues."
+          },
+          "reasoning_steps": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of agentic reasoning steps executed. Present only in agentic analyses."
+          },
+          "time_taken": {
+            "type": "string",
+            "pattern": "^\\d{2}:\\d{2}$",
+            "description": "Wall-clock time the analysis took to complete, in MM:SS format.",
+            "examples": ["01:45", "00:30"]
+          },
+          "reasoning_process": {
+            "type": ["string", "null"],
+            "description": "Agentic pipeline's intermediate reasoning trace stored as a raw string. Null when no reasoning steps were recorded, or absent in basic pipeline."
+          }
+        }
+      },
+
       "semantics": {
         "type": "object",
         "description": "Context on supplementary visual guides to aid semantic understanding",
@@ -287,8 +322,12 @@
         "additionalProperties": false,
         "properties": {
           "color": { "type": "string" }
-
         }
+      },
+      "confidenceLevel": {
+        "type": "string",
+        "enum": ["high", "medium", "low"],
+        "description": "Confidence level for analysis accuracy."
       }
     }
   }
