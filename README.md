@@ -109,6 +109,227 @@ Annotations captures interpretive overlays — things an instructor draws on top
 
 ---
 
+### Provenance
+
+Provenance is an optional top-level property — it is not listed in `required` because the static IR can be hand-authored (as the example codings f1, f2, and f3 are). When present, it records metadata about the AI pipeline that generated the IR, along with quality signals that let downstream consumers judge how much to trust the output.
+
+Provenance has four required fields. The `model` field records the LLM model identifier used to generate the IR (for example, "gemini-2.5-flash"). The `confidence` field references a shared `confidenceLevel` definition (high, medium, or low), providing a self-assessed quality signal from the model about the overall accuracy of the generated IR. The `visibility_issues` field is either a string describing problems that may have degraded the IR's accuracy (glare, hand occlusion, low resolution) or null when no issues were encountered — this was deliberately made nullable rather than using a string convention like "None" so that the absence of issues is structurally unambiguous. The `time_taken` field records the wall-clock duration of the analysis in MM:SS format, replacing `analysis_timestamp` as the required temporal field — how long the analysis took is more operationally useful than when it happened.
+
+Three optional fields support agentic pipeline runs. The `reasoning_steps` field is an integer recording how many reasoning steps the agentic pipeline executed. The `reasoning_process` field stores the model's intermediate reasoning trace as a raw string (or null when absent) — a string type was chosen over a structured object because agentic reasoning output is unpredictable in shape, and pretending it has structure would create a validation hole. The `analysis_timestamp` field, when present, records the ISO 8601 timestamp of when the analysis was produced.
+
+---
+
 ### Shared Definitions (`$defs`)
 
-At the bottom of the schema, the `$defs` section contains two reusable sub-schemas referenced throughout the document via `$ref`. The **position** definition is a simple object with two required numeric fields, x and y, representing a point in 2D space. It is used by node positions and can be referenced wherever spatial coordinates are needed. The **visualAttrs** definition is an object currently containing a single optional colour field. Both definitions use `additionalProperties: false` to maintain the same strict approach as the rest of the schema. Abstracting these into `$defs` avoids duplication — any property that references position or visual attributes points to the same definition, so a change in one place propagates everywhere.
+At the bottom of the schema, the `$defs` section contains three reusable sub-schemas referenced throughout the document via `$ref`. The **position** definition is a simple object with two required numeric fields, x and y, representing a point in 2D space. It is used by node positions and can be referenced wherever spatial coordinates are needed. The **visualAttrs** definition is an object currently containing a single optional colour field. The **confidenceLevel** definition is a string enum constrained to "high", "medium", or "low", shared with the operation schema to maintain a consistent quality vocabulary across both schemas. All three definitions use `additionalProperties: false` to maintain the same strict approach as the rest of the schema. Abstracting these into `$defs` avoids duplication — any property that references position, visual attributes, or confidence levels points to the same definition, so a change in one place propagates everywhere.
+
+---
+
+## Conventions
+
+These conventions govern how the static IR should be authored, whether by hand or by an AI pipeline, to ensure consistency across encodings.
+
+### Flowcharts vs. Annotations
+
+A flowchart is defined as the set of all elements that are connected to each other — nodes linked by connections form a single coherent graph. Anything that is added to the board but is not structurally connected to this graph is classified as an annotation. For example, if an instructor draws a circle around a node or writes a note next to it without connecting it via an edge, that overlay belongs in the `annotations` array under semantics, not as a node in `elements`. The distinction is structural: if it participates in the graph (has connections), it is part of the flowchart; if it is overlaid on the graph without being part of it, it is an annotation.
+
+### Node and Connection Numbering
+
+Nodes are numbered left to right, level by level. The topmost (or leftmost, depending on flowchart orientation) node is `n1`. All nodes at the same depth level are numbered before descending to the next level. Within a level, numbering proceeds from left to right. Connections follow the same principle — `c1` is the first connection encountered when traversing the flowchart in this level-order sequence. This convention ensures that any two people encoding the same flowchart will produce the same ID assignments, which is critical for reproducibility and for cross-referencing between the static IR and operation schema outputs.
+
+### Hierarchy and Nested Groupings
+
+When representing hierarchical relationships, every descendant node must be listed as a direct child of the relevant parent group, regardless of how deeply nested it is in the visual layout. That is, if node A contains group B which contains node C, then C must appear in B's `children` array — but if A is the root group, then B (the sub-group) must also appear in A's `children` array. This "flattened children" approach was chosen over implicit nesting for clarity: a consumer traversing the hierarchy does not need to recursively resolve sub-groups to discover which nodes belong to a parent. The `parent` field on each group handles the nesting direction (child points to parent), while `children` handles the containment direction (parent lists all direct contents). Both directions are always explicit.
+
+---
+
+## Operation Schema
+
+The operation schema (`operation-schema.json`) formalises the output of an LLM-based video analysis pipeline. Where the static schema captures what a flowchart looks like at a single point in time, the operation schema captures what an instructor does to a flowchart over the course of a lecture video. It was developed as part of an experiment using Google Gemini 2.5-Flash to analyse lecture recordings and automatically detect, classify, and describe every flowchart-related action performed by the instructor.
+
+### Top-Level Structure
+
+The operation schema has three top-level properties: `metadata`, `reasoning_process`, and `analysis`. Only `metadata` and `analysis` are required. This three-part split separates provenance (how the analysis was produced) from reasoning (how the model thought) from findings (what was detected).
+
+### Document Metadata
+
+Document metadata records the conditions under which the analysis was run. It has four required fields: `video_file` (the source video filename), `frame_rate` (the fps at which the video was sampled before being sent to the model — this is provenance only, since operations reference timestamps rather than frame numbers), `model` (the LLM model identifier), and `analysis_timestamp` (an ISO 8601 timestamp of when the analysis was produced). An optional `reasoning_steps` field records how many agentic reasoning steps were executed, present only when the agentic pipeline was used.
+
+### Reasoning Process
+
+The `reasoning_process` field stores the model's intermediate reasoning trace as a raw string, or null when no reasoning was recorded. This field is typed as `["string", "null"]` rather than accepting arbitrary objects or arrays — the reasoning output from agentic pipelines is unpredictable in structure, so storing it as a raw string avoids creating a validation hole in an otherwise strict schema.
+
+### Analysis
+
+The analysis object is the payload. It contains three required properties: `metadata` (about the results), `operations` (the detected actions), and `summary` (aggregate counts and observations).
+
+#### Analysis Metadata
+
+Analysis metadata describes the results themselves, distinct from the document metadata which describes the run. It has four required fields. The `video_duration` field records the total duration of the analysed segment in MM:SS format. The `total_operations_detected` field is an integer count that should match the length of the operations array — it serves as a redundant cross-check. The `analysis_confidence` field is a high/medium/low enum representing the model's overall self-assessed confidence. The `visibility_issues` field is either a descriptive string or null, documenting any video quality problems (glare, occlusion, low resolution) that may have affected the analysis.
+
+#### Operations
+
+Operations is a chronologically ordered array. Each operation represents a single detected instructor action on a flowchart and carries eight required fields, making every detection heavily documented for auditability.
+
+The `operation_id` is a sequential integer starting from 1, implying chronological order. The `timestamp_start` and `timestamp_end` fields bound the action temporally in MM:SS or MM:SS.mmm format — start means the first visible change (first stroke), end means the completion (last stroke). The `operation_type` field classifies the action into one of five categories (defined below). The `confidence` field is a per-operation high/medium/low assessment, distinct from the overall analysis confidence.
+
+The `physical_action` object captures what the instructor physically did — a natural language `description` and a `tool_used` field constrained to an enum of six values: marker, digital pen, eraser, pointer, slide transition, or other. Physical action is separated from semantic meaning because the same physical gesture (drawing a circle) could be an ADDITION (new node) or a HIGHLIGHTING (circling an existing node), so physical action alone does not determine classification.
+
+The `classification_reasoning` object is an audit trail. It contains `criteria_met` (which taxonomy rules were satisfied), `distinguishing_features` (what visual evidence drove the classification), and `edge_cases_considered` (ambiguities the model weighed). This exists because the analysis prompt provides the model with an explicit decision tree and requires it to show its work, making every classification contestable by a human reviewer.
+
+The `content_description` object bridges raw observation and educational meaning through three fields: `semantic_content` (high-level summary of meaning), `diagram_elements` (specific elements involved, as an array of strings — may be empty for erasure operations), and `pedagogical_context` (why this action matters in the lecture's teaching flow).
+
+The `visual_evidence` object is the grounding mechanism. It contains `before_state` and `after_state` descriptions (both required), plus an optional `frame_references` object with `start` and `end` timestamp fields pointing to specific frames as evidence. The before/after pair makes each operation independently verifiable.
+
+#### Summary
+
+The summary object provides aggregate counts for each operation type — `creation_count`, `addition_count`, `highlighting_count`, `erasure_count`, and `complete_erasure_count` — each of which must equal the number of operations of that type in the operations array. Two additional array fields, `key_observations` and `challenges_encountered`, capture qualitative patterns and difficulties observed across the full video.
+
+---
+
+### Operation Definitions
+
+The operation schema classifies every detected action into exactly one of five mutually exclusive types. There is no "OTHER" category — ambiguous cases must still be classified, with uncertainty surfaced through the confidence field and edge_cases_considered in the reasoning.
+
+#### CREATION
+
+Initial construction of a flowchart on a blank or recently erased surface. All of the following must be true: the action is preceded by a blank slate or a complete erasure; new flowchart elements appear forming a coherent diagram; no pre-existing flowchart components remain visible; and the action marks the beginning of a new diagrammatic context. Visual signatures include an empty board followed by drawing, or a post-erasure surface where a new diagram starts.
+
+#### ADDITION
+
+Adding new substantive components to an existing flowchart. All of the following must be true: a pre-existing flowchart is visible and remains intact; no erasure has occurred since the last operation; new content appears (nodes, arrows, text labels, connections); and the new elements provide new semantic content, not emphasis. The critical distinction from HIGHLIGHTING is that ADDITION adds meaning — a new node, a new branch, a new label — while HIGHLIGHTING annotates existing meaning.
+
+#### HIGHLIGHTING
+
+Overlaying temporary visual emphasis on existing flowchart elements. All of the following must be true: pre-existing flowchart elements remain unchanged; visual marks are overlaid on existing content; the purpose is emphasis, enumeration, or reference rather than new content; and the marks are typically temporary or stylistically distinct from the flowchart itself. Visual signatures include circles drawn around existing nodes, underlines beneath text, colour changes to existing elements, arrows pointing to existing components, or numbering of existing elements.
+
+#### ERASURE
+
+Removing specific parts of a flowchart while preserving the overall diagram. All of the following must be true: a pre-existing flowchart is visible; specific elements or regions are removed; other parts of the flowchart remain intact; and an entity-to-whole relationship is maintained (a part is removed, but the whole continues to exist). Visual signatures include a single node or arrow being removed, a text label being wiped away, or a section of the diagram being cleared.
+
+#### COMPLETE_ERASURE
+
+Total removal of an entire flowchart diagram. All of the following must be true: a previously visible flowchart exists; all components of that flowchart are removed; the result is a blank surface or preparation for a new topic; and the action marks the end of a diagrammatic context. Visual signatures include an entire board or region being cleared, all flowchart elements disappearing, or a slide transition that removes the diagram. This often signals a topic or context shift in the lecture.
+
+#### Classification Decision Tree
+
+The five types are disambiguated through a decision tree. First: is there any pre-existing flowchart visible? If no, the action is CREATION. If yes: is something being removed? If removal is occurring, is the entire flowchart removed (COMPLETE_ERASURE) or only parts of it (ERASURE)? If nothing is being removed but something is being added, does it carry new semantic content (ADDITION) or does it annotate existing content (HIGHLIGHTING)?
+
+---
+
+### Shared Definitions (`$defs`) — Operation Schema
+
+The operation schema's `$defs` section contains reusable sub-schemas that parallel the static schema's approach. **ConfidenceLevel** is a string enum (high, medium, low) referenced by both the overall analysis confidence and per-operation confidence fields — the same vocabulary as the static schema's `confidenceLevel` definition, ensuring consistency across both schemas. **OperationType** encodes the five-class taxonomy as a string enum with a description that summarises all five types. The remaining definitions — **PhysicalAction**, **ClassificationReasoning**, **ContentDescription**, **VisualEvidence**, **DocumentMetadata**, **AnalysisMetadata**, **Operation**, **Analysis**, and **Summary** — are each defined once and referenced via `$ref` to avoid duplication within the schema.
+
+---
+
+## System Integration
+
+The static schema and operation schema are designed to work together as complementary views of the same underlying process. Their integration follows three rules:
+
+**Operations trigger the operation schema.** When an instructor performs a detectable action on a flowchart — drawing, adding, highlighting, erasing, or clearing — the operation schema is used to classify, describe, and timestamp that action. Each operation is a discrete event with temporal bounds, a classification, and evidence.
+
+**State boundaries trigger the static schema.** To ensure that spatial and structural data is captured alongside the temporal operation data, the system generates a static schema instance at the beginning and end of each detected operation. These before-and-after snapshots preserve the full graph state (nodes, connections, hierarchy, semantics) at the moments immediately surrounding each change, providing the structural context that the operation schema's free-text descriptions cannot.
+
+**Idle board states trigger the static schema.** Whenever there is no active change happening but a flowchart is visible on the board, a static schema instance is generated for it. This covers the common lecture pattern where an instructor draws a flowchart, pauses to explain it verbally for several minutes, and then modifies it. During the explanation pause, the static IR captures the current state so that it is available for accessibility tools without waiting for the next operation to provide before/after context.
+
+### Integration Protocol — Formal Definition
+
+The integration protocol is modeled as a Mealy machine — a finite state transducer that produces output on each transition rather than in each state. This is the appropriate formalism because schema generation is triggered by events (an operation starts, an operation ends, time passes with no change), not by residency in a particular state.
+
+**Definition.** Let *M* = (*Q*, *Σ*, *Γ*, *δ*, *λ*, *q*₀) be a Mealy machine where:
+
+**State set** *Q* = {*B*, *I*, *O*, *E*}
+
+| State | Name | Interpretation |
+|-------|------|----------------|
+| *B* | Blank | No flowchart is present on the board. |
+| *I* | Idle | A flowchart is present and no operation is in progress. |
+| *O* | Operating | A non-destructive operation is in progress (CREATION, ADDITION, HIGHLIGHTING, or ERASURE). |
+| *E* | Erasing | A COMPLETE_ERASURE is in progress. |
+
+The distinction between *O* and *E* is necessary because they differ in their terminal state: *O* always resolves to *I* (the flowchart survives the operation), while *E* always resolves to *B* (the flowchart is destroyed). All four non-destructive operation types share the same transition behaviour, so they are collapsed into a single state.
+
+**Input alphabet** *Σ* = {*σ*_c, *σ*_a, *σ*_h, *σ*_e, *σ*_d, *ω*, *τ*}
+
+| Symbol | Event |
+|--------|-------|
+| *σ*_c | CREATION begins (first stroke on blank surface) |
+| *σ*_a | ADDITION begins (new content added to existing flowchart) |
+| *σ*_h | HIGHLIGHTING begins (emphasis overlaid on existing content) |
+| *σ*_e | ERASURE begins (partial removal of flowchart elements) |
+| *σ*_d | COMPLETE_ERASURE begins (total removal of flowchart) |
+| *ω* | Current operation completes |
+| *τ* | Time elapses with no detected change |
+
+**Output alphabet** *Γ* = {*S*, *P*, *S*·*P*, *ε*}
+
+| Symbol | Schema action |
+|--------|--------------|
+| *S* | Generate a static IR instance (snapshot of current board state). |
+| *P* | Generate an operation schema entry (classify and describe the detected action). |
+| *S*·*P* | Generate both: a static IR snapshot (before-state), then an operation schema entry. |
+| *ε* | No schema output. |
+
+**Initial state** *q*₀ = *B*
+
+**Transition function** *δ* : *Q* × *Σ* → *Q*
+
+| Current state | Input | Next state | Justification |
+|---------------|-------|------------|---------------|
+| *B* | *σ*_c | *O* | A flowchart is being created on a blank surface. |
+| *B* | *τ* | *B* | Board remains blank; nothing to capture. |
+| *I* | *σ*_a | *O* | Existing flowchart is being extended. |
+| *I* | *σ*_h | *O* | Existing flowchart is being annotated. |
+| *I* | *σ*_e | *O* | Part of the flowchart is being removed. |
+| *I* | *σ*_d | *E* | Entire flowchart is being erased. |
+| *I* | *τ* | *I* | Flowchart persists unchanged. |
+| *O* | *ω* | *I* | Non-destructive operation completes; flowchart survives. |
+| *E* | *ω* | *B* | Complete erasure finishes; board is blank. |
+
+All (*q*, *σ*) pairs not listed above are undefined — the machine rejects the input. In particular, *σ*_c is only valid from *B* (by definition, CREATION requires a blank surface), and *σ*_a, *σ*_h, *σ*_e, *σ*_d are only valid from *I* (they require a pre-existing flowchart). No input is accepted from *O* or *E* other than *ω* (operations are atomic and non-interruptible).
+
+**Output function** *λ* : *Q* × *Σ* → *Γ*
+
+| Current state | Input | Output | Rationale |
+|---------------|-------|--------|-----------|
+| *B* | *σ*_c | *P* | No flowchart exists to snapshot; only the operation entry is generated. |
+| *B* | *τ* | *ε* | Empty board, nothing to record. |
+| *I* | *σ*_a | *S*·*P* | Snapshot the current state before the change, then record the operation. |
+| *I* | *σ*_h | *S*·*P* | Snapshot the current state before the change, then record the operation. |
+| *I* | *σ*_e | *S*·*P* | Snapshot the current state before the change, then record the operation. |
+| *I* | *σ*_d | *S*·*P* | Snapshot the current state before destruction, then record the operation. |
+| *I* | *τ* | *S* | Maintain/refresh the static IR for the idle flowchart. |
+| *O* | *ω* | *S* | Snapshot the resulting state after the operation completes. |
+| *E* | *ω* | *ε* | Board is blank after complete erasure; no flowchart to snapshot. |
+
+**Properties.**
+
+1. *Schema completeness.* Every operation is bracketed by static IR snapshots: the before-snapshot is emitted on the transition into *O* or *E* (output *S*·*P*), and the after-snapshot is emitted on the transition out of *O* (output *S*). The exception is CREATION (no before-snapshot, since *B* has no flowchart) and COMPLETE_ERASURE (no after-snapshot, since *B* has no flowchart). In both cases, the missing snapshot is the empty board — a trivially reconstructible state.
+
+2. *Idle coverage.* The self-loop (*I*, *τ*) → (*I*, *S*) ensures that a flowchart is captured even when the instructor is not actively modifying it. This covers explanation pauses, discussion periods, and any interval where the diagram is visible but static.
+
+3. *Determinism.* The machine is deterministic — for every (*q*, *σ*) pair where a transition is defined, exactly one next state and one output are produced.
+
+4. *No accepting states.* The machine runs continuously for the duration of the lecture video. There is no halting condition intrinsic to the protocol; the machine terminates when the video ends.
+
+```mermaid
+stateDiagram-v2
+    state "Blank (B)" as B
+    state "Idle (I)" as I
+    state "Operating (O)" as O
+    state "Erasing (E)" as E
+
+    [*] --> B
+
+    B --> O : σc / P
+    B --> B : τ / ε
+
+    I --> O : σa, σh, σe / S·P
+    I --> E : σd / S·P
+    I --> I : τ / S
+
+    O --> I : ω / S
+    E --> B : ω / ε
+```
+*Figure 1. Mealy machine for the integration protocol. Transition labels are input / output. States B and I are quiescent (no operation in progress); states O and E are transient (an operation is active).*
