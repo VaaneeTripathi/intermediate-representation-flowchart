@@ -6,7 +6,7 @@
     "title": "Intermediate Representation for a Static Flowchart",
     "description": "IR for making flowcharts accessible to visually impaired persons",
     "type": "object",
-    "required": ["id", "elements", "structure", "state", "semantics"],
+    "required": ["id", "elements", "structure", "state", "semantics", "provenance"],
     "additionalProperties": false,
 
     "properties": {
@@ -47,7 +47,7 @@
                 },
                 "text": { "type": ["string", "null"] },
                 "position": { "$ref": "#/$defs/position" },
-                "visual": { "$ref": "#/$defs/visualAttrs" }
+                "visual": { "$ref": "#/$defs/visual_attrs" }
               }
             }
           },
@@ -73,13 +73,13 @@
                   "enum": ["forward", "backward", "bidirectional", "none"],
                   "default": "forward"
                 },
-                "line-type": {
+                "line_type": {
                   "type": "string",
                   "enum": ["solid", "dashed", "dotted"],
                   "default": "solid"
                 },
                 "label": { "type": "string" },
-                "visual": { "$ref": "#/$defs/visualAttrs" }
+                "visual": { "$ref": "#/$defs/visual_attrs" }
               }
             }
           }
@@ -124,27 +124,27 @@
         "additionalProperties": false,
         "properties": {
 
-          "crossLinks": {
+          "cross_links": {
             "type": "array",
             "description": "Architectural relationships between flowcharts on the same board",
             "items": {
               "type": "object",
-              "required": ["sourceFlowchart", "targetFlowchart", "sourceElement", "targetElement"],
+              "required": ["source_flowchart", "target_flowchart", "source_element", "target_element"],
               "additionalProperties": false,
               "properties": {
-                "sourceFlowchart": {
+                "source_flowchart": {
                   "type": "string",
                   "description": "ID of the flowchart with outgoing link"
                 },
-                "targetFlowchart": {
+                "target_flowchart": {
                   "type": "string",
                   "description": "ID of the linked flowchart"
                 },
-                "sourceElement": {
+                "source_element": {
                   "type": "string",
                   "description": "ID of element in this flowchart"
                 },
-                "targetElement": {
+                "target_element": {
                   "type": "string",
                   "description": "ID of element in the target flowchart"
                 },
@@ -159,7 +159,7 @@
             "description": "Complexity management through collapsing and summarization",
             "additionalProperties": false,
             "properties": {
-              "detailLevel": {
+              "detail_level": {
                 "type": "string",
                 "oneOf": [
                   {
@@ -176,7 +176,7 @@
                   }
                 ]
               },
-              "collapsedGroups": {
+              "collapsed_groups": {
                 "type": "array",
                 "items": { "type": "string" },
                 "description": "IDs of hierarchy groups currently collapsed"
@@ -186,10 +186,10 @@
                 "description": "Text summaries for collapsed regions",
                 "items": {
                   "type": "object",
-                  "required": ["groupId", "summary"],
+                  "required": ["group_id", "summary"],
                   "additionalProperties": false,
                   "properties": {
-                    "groupId": { "type": "string" },
+                    "group_id": { "type": "string" },
                     "summary": { "type": "string" }
                   }
                 }
@@ -197,7 +197,7 @@
             }
           },
 
-          "boardState": {
+          "board_state": {
             "type": "string",
             "description": "Plain-text description of the current board state"
           }
@@ -215,7 +215,7 @@
             "description": "LLM model identifier used to generate this IR."
           },
           "confidence": {
-            "$ref": "#/$defs/confidenceLevel"
+            "$ref": "#/$defs/confidence_level"
           },
           "visibility_issues": {
             "type": ["string", "null"],
@@ -231,12 +231,13 @@
             "pattern": "^\\d{2}:\\d{2}$",
             "description": "Wall-clock time the analysis took to complete, in MM:SS format.",
             "examples": ["01:45", "00:30"]
-          },
-          "reasoning_process": {
-            "type": ["string", "null"],
-            "description": "Agentic pipeline's intermediate reasoning trace stored as a raw string. Null when no reasoning steps were recorded, or absent in basic pipeline."
           }
         }
+      },
+
+      "reasoning_process": {
+        "type": ["string", "null"],
+        "description": "Agentic pipeline's intermediate reasoning trace stored as a raw string. Null when no reasoning steps were recorded, or absent in basic pipeline."
       },
 
       "semantics": {
@@ -258,7 +259,7 @@
                   "type": "string",
                   "description": "What this symbol represents (e.g., 'diamond' means 'decision point')"
                 },
-                "applicableTo": {
+                "applicable_to": {
                   "type": "array",
                   "items": { "type": ["string", "null"] },
                   "description": "IDs of elements using this symbol"
@@ -272,7 +273,7 @@
             "description": "Interpretive overlays on elements — highlighting, emphasis, instructor commentary",
             "items": {
               "type": "object",
-              "required": ["id", "target", "annotationType"],
+              "required": ["id", "target", "annotation_type"],
               "additionalProperties": false,
               "properties": {
                 "id": { "type": "string" },
@@ -280,7 +281,7 @@
                   "type": "string",
                   "description": "ID of the annotated node or connection in the elements group"
                 },
-                "annotationType": {
+                "annotation_type": {
                   "type": "string",
                   "enum": [
 		               "container",
@@ -316,7 +317,7 @@
           "y": { "type": "number" }
         }
       },
-      "visualAttrs": {
+      "visual_attrs": {
         "type": ["object", "null"],
         "description": "Visual properties of nodes and connections",
         "additionalProperties": false,
@@ -324,7 +325,7 @@
           "color": { "type": "string" }
         }
       },
-      "confidenceLevel": {
+      "confidence_level": {
         "type": "string",
         "enum": ["high", "medium", "low"],
         "description": "Confidence level for analysis accuracy."

@@ -4,27 +4,45 @@
   "title": "Flowchart Operation Analysis",
   "description": "Schema for analysis of flowchart operations detected in lecture videos.",
   "type": "object",
-  "required": ["metadata", "analysis"],
+  "required": ["provenance", "analysis"],
   "additionalProperties": false,
   "properties": {
-    "metadata": {
-      "$ref": "#/$defs/DocumentMetadata"
-    },
-    "reasoning_process": {
-      "type": ["string", "null"],
-      "description": "Agentic pipeline's intermediate reasoning trace stored as a raw string. Null when no reasoning steps were recorded, or absent in basic pipeline."
+    "provenance": {
+      "$ref": "#/$defs/provenance"
     },
     "analysis": {
-      "$ref": "#/$defs/Analysis"
+      "$ref": "#/$defs/analysis"
     }
   },
   "$defs": {
-    "DocumentMetadata": {
+    "provenance": {
       "type": "object",
-      "description": "Top-level metadata about the analysis run.",
-      "required": ["video_file", "frame_rate", "model", "analysis_timestamp"],
+      "description": "Pipeline metadata and quality signals. Mirrors the static schema's provenance with additional video-specific fields.",
+      "required": ["model", "confidence", "visibility_issues", "time_taken", "video_file", "frame_rate", "analysis_timestamp"],
       "additionalProperties": false,
       "properties": {
+        "model": {
+          "type": "string",
+          "description": "Model identifier used to generate this analysis."
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence_level"
+        },
+        "visibility_issues": {
+          "type": ["string", "null"],
+          "description": "Description of visibility problems that may have affected analysis accuracy (e.g., glare, occlusion, low resolution). Null when no issues."
+        },
+        "time_taken": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "Wall-clock time the analysis took to complete, in MM:SS format.",
+          "examples": ["01:45", "00:30"]
+        },
+        "reasoning_steps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of agentic reasoning steps executed. Present only in agentic analyses."
+        },
         "video_file": {
           "type": "string",
           "description": "Filename of the source video."
@@ -32,52 +50,43 @@
         "frame_rate": {
           "type": "integer",
           "minimum": 1,
-          "description": "Frame rate (fps) at which the video was sampled before being sent to the model. Provenance only — operations reference timestamps, not frame numbers."
-        },
-        "model": {
-          "type": "string",
-          "description": "LLM model identifier used for analysis."
+          "description": "Frame rate (fps) at which the video was sampled before being sent to the model."
         },
         "analysis_timestamp": {
           "type": "string",
           "format": "date-time",
           "description": "ISO 8601 timestamp of when the analysis was produced.",
           "examples": ["2026-03-07T09:17:58Z"]
-        },
-        "reasoning_steps": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Number of agentic reasoning steps executed. Present only in agentic analyses."
         }
       }
     },
 
-    "Analysis": {
+    "analysis": {
       "type": "object",
       "description": "The core analysis output containing detected operations and summary.",
       "required": ["metadata", "operations", "summary"],
       "additionalProperties": false,
       "properties": {
         "metadata": {
-          "$ref": "#/$defs/AnalysisMetadata"
+          "$ref": "#/$defs/analysis_metadata"
         },
         "operations": {
           "type": "array",
           "description": "Chronologically ordered list of detected flowchart operations.",
           "items": {
-            "$ref": "#/$defs/Operation"
+            "$ref": "#/$defs/operation"
           }
         },
         "summary": {
-          "$ref": "#/$defs/Summary"
+          "$ref": "#/$defs/summary"
         }
       }
     },
 
-    "AnalysisMetadata": {
+    "analysis_metadata": {
       "type": "object",
       "description": "Metadata about the analysis results themselves.",
-      "required": ["video_duration", "total_operations_detected", "analysis_confidence", "visibility_issues"],
+      "required": ["video_duration", "total_operations_detected"],
       "additionalProperties": false,
       "properties": {
         "video_duration": {
@@ -90,30 +99,23 @@
           "type": "integer",
           "minimum": 0,
           "description": "Total number of operations detected in the video."
-        },
-        "analysis_confidence": {
-          "$ref": "#/$defs/ConfidenceLevel"
-        },
-        "visibility_issues": {
-          "type": ["string", "null"],
-          "description": "Description of visibility problems encountered (e.g., glare, occlusion, low resolution). Null when no issues."
         }
       }
     },
 
-    "ConfidenceLevel": {
+    "confidence_level": {
       "type": "string",
       "enum": ["high", "medium", "low"],
       "description": "Confidence level for a classification or analysis."
     },
 
-    "OperationType": {
+    "operation_type": {
       "type": "string",
       "enum": ["CREATION", "ADDITION", "HIGHLIGHTING", "ERASURE", "COMPLETE_ERASURE"],
       "description": "The five-class taxonomy for flowchart operations. CREATION: initial drawing on blank surface. ADDITION: new content added to existing flowchart. HIGHLIGHTING: annotation/emphasis on existing elements. ERASURE: partial removal of flowchart elements. COMPLETE_ERASURE: full removal of entire flowchart."
     },
 
-    "Operation": {
+    "operation": {
       "type": "object",
       "description": "A single detected flowchart operation with temporal bounds, classification, and evidence.",
       "required": [
@@ -147,27 +149,27 @@
           "examples": ["01:56", "01:16", "01:16.250"]
         },
         "operation_type": {
-          "$ref": "#/$defs/OperationType"
+          "$ref": "#/$defs/operation_type"
         },
         "confidence": {
-          "$ref": "#/$defs/ConfidenceLevel"
+          "$ref": "#/$defs/confidence_level"
         },
         "physical_action": {
-          "$ref": "#/$defs/PhysicalAction"
+          "$ref": "#/$defs/physical_action"
         },
         "classification_reasoning": {
-          "$ref": "#/$defs/ClassificationReasoning"
+          "$ref": "#/$defs/classification_reasoning"
         },
         "content_description": {
-          "$ref": "#/$defs/ContentDescription"
+          "$ref": "#/$defs/content_description"
         },
         "visual_evidence": {
-          "$ref": "#/$defs/VisualEvidence"
+          "$ref": "#/$defs/visual_evidence"
         }
       }
     },
 
-    "PhysicalAction": {
+    "physical_action": {
       "type": "object",
       "description": "What the instructor physically did during this operation.",
       "required": ["description", "tool_used"],
@@ -185,7 +187,7 @@
       }
     },
 
-    "ClassificationReasoning": {
+    "classification_reasoning": {
       "type": "object",
       "description": "Justification for the assigned operation_type.",
       "required": ["criteria_met", "distinguishing_features", "edge_cases_considered"],
@@ -209,7 +211,7 @@
       }
     },
 
-    "ContentDescription": {
+    "content_description": {
       "type": "object",
       "description": "Semantic description of what was drawn, added, or removed.",
       "required": ["semantic_content", "diagram_elements", "pedagogical_context"],
@@ -231,7 +233,7 @@
       }
     },
 
-    "VisualEvidence": {
+    "visual_evidence": {
       "type": "object",
       "description": "Before/after visual state and optional frame references.",
       "required": ["before_state", "after_state"],
@@ -266,7 +268,7 @@
       }
     },
 
-    "Summary": {
+    "summary": {
       "type": "object",
       "description": "Aggregate counts and qualitative observations for the full analysis.",
       "required": [

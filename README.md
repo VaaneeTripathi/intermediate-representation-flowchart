@@ -1,23 +1,10 @@
 # JSON Schema
 
-This document serves as a walkthrough, justification of design choices, and a reference for the JSON Schema constructed as part of my Capstone Thesis. The first step to reaching here was to explore what the requirements are for an IR - that is, what data it needs to capture. For this, we constructed a table that outlines the information to be included, why it needs to be included, what literature supports this, instances observed in the videos watched for literature review, and what annotating them would look like.
+This document serves as a walkthrough, justification of design choices, and a reference for the JSON schemas constructed as part of my Capstone Thesis. The project produces two complementary schemas. The **static schema** (`static-schema.json`) captures a flowchart at a single point in time — its nodes, connections, hierarchy, board state, and semantic context. The **operation schema** (`operation-schema.json`) captures what an instructor does to a flowchart over the course of a lecture video — each detected action is classified, timestamped, and documented with evidence. Together, the two schemas provide both the spatial and the temporal dimensions needed to make lecture flowcharts accessible to visually impaired students.
+
+The first step to reaching here was to explore what the requirements are for an IR — that is, what data it needs to capture. For this, we constructed a table that outlines the information to be included, why it needs to be included, what literature supports this, instances observed in the videos watched for literature review, and what annotating them would look like.
 
 The table can be found here: [Thesis IR Requirements](https://docs.google.com/spreadsheets/d/1AntonupgmWn9se1v5Xf6j6UbX7Bw4INg9vhZyAFw5qQ/edit?usp=sharing)
-
-Then, from the table, all the needs were divided into four categories. These can be explained as follows:
-
----
-
-## Logical Groupings
-
-These groupings together describe a flowchart as a layered system that encodes visual form, organization, behavior, and meaning. The Elements group refers to the basic visible components—nodes and their connections—along with their explicit visual attributes, which make the diagram perceptible and readable. Structure captures how these components are arranged into higher-order organization, such as hierarchy, compacted or abstracted views, and links across multiple flowcharts, allowing navigation between different levels of detail. State introduces dynamism by accounting for spatial positioning, temporal evolution, and replication, enabling the flowchart to represent processes that change over time or recur. Finally, Semantics provides interpretive depth through narrative context, domain-specific symbols, and annotations, transforming the diagram from a purely graphical layout to a comprehensive representation, ensuring the computational and informational equivalence of the flowcharts.
-
-| Category | Contents |
-|----------|----------|
-| **Elements** | Nodes, Connections (with explicit visual attributes) |
-| **Structure** | Hierarchy, Compacted Version, Cross-flowchart Links |
-| **State** | Spatial Data, Temporality, Replication |
-| **Semantics** | Narrative Context, Symbol Support, Annotations |
 
 ---
 
@@ -25,19 +12,46 @@ These groupings together describe a flowchart as a layered system that encodes v
 
 The first question after all this analysis is what representation language to use to capture all this data. Some options that we considered were Mermaid, XML, and UML. However, for the long-term development goals of the project, JSON seemed the most suitable. This can be explained as follows:
 
-- **Data model flexibility:** JSON makes no assumption about whether data is a tree or a graph, so hierarchy and graph connectivity sit naturally side by side in the same document. XML is fundamentally a tree and forces you to abandon nesting to express graph connections, ending up with the same ID reference pattern as JSON but with more syntax overhead. Mermaid is a rendering DSL — it has no document model at all, just a string that a renderer interprets. UML has a metamodel that can express both but requires a heavy toolchain (XMI serialization) to actually store it.
+- **Data model flexibility:** JSON makes no assumption about whether data is a tree or a graph [1], so hierarchy and graph connectivity sit naturally side by side in the same document. XML is fundamentally a tree and forces you to abandon nesting to express graph connections, ending up with the same ID reference pattern as JSON but with more syntax overhead. Mermaid is a rendering DSL — it has no document model at all, just a string that a renderer interprets. UML has a metamodel that can express both but requires a heavy toolchain (XMI serialization) to actually store it.
 
-- **Change tracking:** JSON Patch provides a standardised way to record what changed between versions as a sequence of operations, directly satisfying the temporality requirement without storing full snapshots. XML has no equivalent standard for delta tracking — you either diff the full document or implement your own change format. Mermaid has no versioning concept whatsoever — it is a static string. UML versioning is tool-dependent and not standardised across implementations.
+- **Change tracking:** JSON Patch [2] provides a standardised way to record what changed between versions as a sequence of operations, directly satisfying the temporality requirement without storing full snapshots. XML has no equivalent standard for delta tracking — you either diff the full document or implement your own change format. Mermaid has no versioning concept whatsoever — it is a static string. UML versioning is tool-dependent and not standardised across implementations.
 
-- **Parse simplicity:** A single `JSON.parse()` call is all a student's assistive technology needs, with no generated decoder code, no schema compilation, and no binary decoding library. XML requires a DOM or SAX parser which, while available in browsers, is substantially more verbose to use. Mermaid requires its own rendering library to be loaded before anything can be interpreted. UML/XMI has no browser-native parser at all.
+- **Parse simplicity:** A single `JSON.parse()` call [3] is all a student's assistive technology needs, with no generated decoder code, no schema compilation, and no binary decoding library. XML requires a DOM or SAX parser which, while available in browsers, is substantially more verbose to use. Mermaid requires its own rendering library to be loaded before anything can be interpreted. UML/XMI has no browser-native parser at all.
 
-- **Performance:** XML is measurably slower than JSON in transmission speed and payload size, compounding across every incremental update in a live session. Mermaid and UML are not designed for real-time streaming at all and have no performance profile relevant to this comparison.
+- **Performance:** XML is measurably slower than JSON in transmission speed and payload size [4], compounding across every incremental update in a live session. Mermaid and UML are not designed for real-time streaming at all and have no performance profile relevant to this comparison.
 
-- **Extensibility:** JSON places no restrictions on what data you add to a document, so fields like narrative context, plain-language node descriptions, symbol dictionaries, and annotation metadata can be added wherever needed without fighting the format. JSON Schema can then optionally enforce that these fields are present before a tool attempts to render or speak the content. XML technically allows custom elements but its schema system (XSD) is complex enough that adding new accessibility fields in practice means significant schema maintenance overhead. Mermaid is a closed rendering syntax — there is nowhere to attach custom contextual data like a narrative description without it breaking the renderer. UML supports tagged values for custom data but they are tool-specific, meaning custom accessibility fields added in one UML tool will not reliably survive export to another.
+- **Extensibility:** JSON places no restrictions on what data you add to a document, so fields like plain-language node descriptions, symbol dictionaries, and annotation metadata can be added wherever needed without fighting the format. JSON Schema [5] can then optionally enforce that these fields are present before a tool attempts to render or speak the content. XML technically allows custom elements but its schema system (XSD) is complex enough that adding new accessibility fields in practice means significant schema maintenance overhead. Mermaid is a closed rendering syntax — there is nowhere to attach custom contextual data without it breaking the renderer. UML supports tagged values for custom data but they are tool-specific, meaning custom accessibility fields added in one UML tool will not reliably survive export to another.
+
+**References**
+
+[1] T. Bray, Ed., "The JavaScript Object Notation (JSON) Data Interchange Format," RFC 8259, IETF, December 2017. https://datatracker.ietf.org/doc/html/rfc8259 — See also ECMA-404, 2nd edition (December 2017), which explicitly states that JSON's intent "is not to provide any semantics or interpretation of text conforming to that syntax."
+
+[2] P. Bryan and M. Nottingham, "JavaScript Object Notation (JSON) Patch," RFC 6902, IETF, April 2013. https://datatracker.ietf.org/doc/html/rfc6902
+
+[3] ECMA International, "ECMAScript Language Specification," ECMA-262, Section 25.5.1. `JSON.parse()` has been a built-in global function since ES5 (December 2009) and is supported by every modern browser. https://262.ecma-international.org/
+
+[4] N. Nurseitov, M. Paulson, R. Reynolds, and C. Izurieta, "Comparison of JSON and XML Data Interchange Formats: A Case Study," Proc. 22nd International Conference on Computer Applications in Industry and Engineering (CAINE), 2009. https://www.cs.montana.edu/izurieta/pubs/IzurietaCAINE2009.pdf
+
+[5] A. Wright, H. Andrews, B. Hutton, and G. Dennis, "JSON Schema: A Media Type for Describing JSON Documents," JSON Schema Specification, 2020-12. https://json-schema.org/draft/2020-12/json-schema-core
 
 ---
 
-## Structure of the Schema
+## Logical Groupings
+
+From the requirements table, all the needs were divided into four categories. These groupings informed the design of both schemas — the static schema directly encodes Elements, Structure, State, and Semantics as its top-level categories, while the operation schema captures the temporal and dynamic aspects (how elements change over time) that were originally part of the State category but required a separate schema to represent properly.
+
+The groupings together describe a flowchart as a layered system that encodes visual form, organization, behavior, and meaning. The Elements group refers to the basic visible components — nodes and their connections — along with their explicit visual attributes, which make the diagram perceptible and readable. Structure captures how these components are arranged into higher-order organization, such as hierarchy, compacted or abstracted views, and links across multiple flowcharts, allowing navigation between different levels of detail. State captures the current snapshot of the board — spatial positioning, cross-flowchart relationships, and progressive disclosure for complexity management. Finally, Semantics provides interpretive depth through domain-specific symbols and annotations, transforming the diagram from a purely graphical layout into a comprehensive representation, ensuring the computational and informational equivalence of the flowcharts.
+
+| Category | Static Schema Contents | Operation Schema Relevance |
+|----------|----------------------|---------------------------|
+| **Elements** | Nodes, Connections (with explicit visual attributes) | Referenced in operation content descriptions |
+| **Structure** | Hierarchy, Compacted Version, Cross-flowchart Links | Structural changes tracked as operations |
+| **State** | Board State, Cross-Links, Compacted View | Temporality and replication captured as operation sequences |
+| **Semantics** | Symbol Support, Annotations | Pedagogical context captured per-operation |
+
+---
+
+## Static Schema
 
 ### JSON Schema Essentials
 
@@ -59,7 +73,7 @@ Node is defined as a list, and then `items` is used to enforce that all elements
 
 #### Connections
 
-Connections are also defined as a list of objects. Each connection requires three properties - id, source, and target. The source and target are string references to node IDs, establishing the graph edges. Beyond these required fields, connections carry optional metadata: `direction` indicates the arrow direction using one of four values (forward, backward, bidirectional, or none), defaulting to forward. This separates the visual arrow direction from the structural source-target relationship — a backward connection keeps its source and target as listed but draws the arrow in reverse. The `line-type` field specifies the visual style of the connection (solid, dashed, or dotted), defaulting to solid. An optional `label` field stores any text displayed on or near the connection, such as "Yes" or "No" on decision branches. Like nodes, connections also carry an optional visual attribute reference for colour.
+Connections are also defined as a list of objects. Each connection requires three properties - id, source, and target. The source and target are string references to node IDs, establishing the graph edges. Beyond these required fields, connections carry optional metadata: `direction` indicates the arrow direction using one of four values (forward, backward, bidirectional, or none), defaulting to forward. This separates the visual arrow direction from the structural source-target relationship — a backward connection keeps its source and target as listed but draws the arrow in reverse. The `line_type` field specifies the visual style of the connection (solid, dashed, or dotted), defaulting to solid. An optional `label` field stores any text displayed on or near the connection, such as "Yes" or "No" on decision branches. Like nodes, connections also carry an optional visual attribute reference for colour.
 
 ---
 
@@ -75,53 +89,51 @@ Hierarchy is defined as an array of group objects, where each group has three re
 
 ### State
 
-The state category captures the current, dynamic aspects of the board at any given moment. It contains three properties: crossLinks, compacted, and boardState.
+The state category captures the current, dynamic aspects of the board at any given moment. It contains three properties: `cross_links`, `compacted`, and `board_state`.
 
 #### Cross-Links
 
-CrossLinks handles the multi-flowchart case — when a whiteboard contains several flowcharts that reference each other. Each cross-link is an object with four required fields: `sourceFlowchart` and `targetFlowchart` (the IDs of the two flowcharts involved) and `sourceElement` and `targetElement` (the IDs of the specific elements being linked across those flowcharts). An optional `label` can describe the nature of the relationship. This means the IR is not just a single-graph format; it is aware of a broader board context where multiple flowcharts coexist and interact.
+`cross_links` handles the multi-flowchart case — when a whiteboard contains several flowcharts that reference each other. Each cross-link is an object with four required fields: `source_flowchart` and `target_flowchart` (the IDs of the two flowcharts involved) and `source_element` and `target_element` (the IDs of the specific elements being linked across those flowcharts). An optional `label` can describe the nature of the relationship. This means the IR is not just a single-graph format; it is aware of a broader board context where multiple flowcharts coexist and interact.
 
 #### Compacted
 
-Compacted provides the progressive disclosure mechanism, which is critical for accessibility. A complex flowchart with many nodes would be overwhelming for a screen reader to traverse in full. Compacted addresses this through three sub-properties. The `detailLevel` field uses `oneOf` with `const` values rather than a plain enum, so that each level carries its own description: "full" means all nodes and connections are visible, "summary" means collapsed groups are shown as single summary nodes, and "minimal" means only the top-level flow with group summaries is presented. The `collapsedGroups` field is an array of hierarchy group IDs that are currently collapsed. The `summaries` field pairs each collapsed group with a plain-text summary, so that a screen reader can announce "This section handles error recovery with 8 steps" rather than reading all 8 nodes individually.
+Compacted provides the progressive disclosure mechanism, which is critical for accessibility. A complex flowchart with many nodes would be overwhelming for a screen reader to traverse in full. Compacted addresses this through three sub-properties. The `detail_level` field uses `oneOf` with `const` values rather than a plain enum, so that each level carries its own description: "full" means all nodes and connections are visible, "summary" means collapsed groups are shown as single summary nodes, and "minimal" means only the top-level flow with group summaries is presented. The `collapsed_groups` field is an array of hierarchy group IDs that are currently collapsed. The `summaries` field pairs each collapsed group with a plain-text summary, so that a screen reader can announce "This section handles error recovery with 8 steps" rather than reading all 8 nodes individually.
 
 #### Board State
 
-BoardState is a plain-text string that captures an overall description of the current board state. This replaces what was previously a more granular spatial data object with viewport and bounds properties; a free-form string was chosen instead because the exact viewport coordinates are less useful for accessibility purposes than a human-readable description of what is currently happening on the board.
+`board_state` is a plain-text string that captures an overall description of the current board state. This replaces what was previously a more granular spatial data object with viewport and bounds properties; a free-form string was chosen instead because the exact viewport coordinates are less useful for accessibility purposes than a human-readable description of what is currently happening on the board.
 
 ---
 
 ### Semantics
 
-The semantics category is arguably the most important for the stated accessibility purpose of the IR. It transforms raw graph data into something meaningful for non-visual consumption. It contains three properties: narrative, symbols, and annotations.
-
-#### Narrative
-
-Narrative provides natural language context for the flowchart through four sub-properties. The `overview` field is a high-level description of what the flowchart represents (for example, "This flowchart shows the algorithm for binary search"). The `purpose` field explains why the flowchart exists in the learning material (for example, "Used in Week 3 to illustrate divide-and-conquer"). The `dialogue` field captures the current conversational context in which the flowchart is being discussed — this is particularly useful in a live lecture setting where the instructor's spoken explanation provides context that is otherwise lost when a student encounters the diagram in isolation. The `walkthrough` field is an ordered array of element-narration pairs that provides a guided tour through the flowchart. Each entry pairs an elementId with a narration string. The array ordering is significant — JSON arrays are ordered, so the author controls the exact narrative sequence. This imposes a linear reading order on an inherently non-linear structure, which is precisely what a screen reader needs to present the flowchart step by step.
+The semantics category transforms raw graph data into something meaningful for non-visual consumption. It contains two properties: `symbols` and `annotations`.
 
 #### Symbols
 
-Symbols serves as a legend — a lookup table that maps visual conventions to their semantic meaning. Each entry has two required fields: `symbol` (a string like "diamond" or "dashed line") and `meaning` (a description like "decision point" or "optional path"). An optional `applicableTo` array lists the IDs of elements that use this symbol. This is critical for accessibility because sighted users absorb shape conventions visually — everyone "knows" a diamond is a decision — but that knowledge must be made explicit for non-visual consumption. By making this a per-flowchart table rather than hardcoding it, the schema supports non-standard conventions, such as an instructor using triangles for something domain-specific.
+Symbols serves as a legend — a lookup table that maps visual conventions to their semantic meaning. Each entry has two required fields: `symbol` (a string like "diamond" or "dashed line") and `meaning` (a description like "decision point" or "optional path"). An optional `applicable_to` array lists the IDs of elements that use this symbol. This is critical for accessibility because sighted users absorb shape conventions visually — everyone "knows" a diamond is a decision — but that knowledge must be made explicit for non-visual consumption. By making this a per-flowchart table rather than hardcoding it, the schema supports non-standard conventions, such as an instructor using triangles for something domain-specific.
 
 #### Annotations
 
-Annotations captures interpretive overlays — things an instructor draws on top of the flowchart as meta-commentary, such as circling a critical node, drawing an arrow to a common mistake, or adding a cloud with a note. Each annotation has three required fields: `id`, `target` (the ID of the annotated element), and `annotationType` (one of eight values: container, separator, highlight, circle, underline, arrow, cloud, or strikethrough). An optional `content` field, which can be a string or null, stores the text attached to the annotation. For accessibility, this field is what converts a visual gesture (a red circle around a node) into a communicable description ("I circled this node because it is the most common source of bugs").
-
----
+Annotations captures interpretive overlays — things an instructor draws on top of the flowchart as meta-commentary, such as circling a critical node, drawing an arrow to a common mistake, or adding a cloud with a note. Each annotation has three required fields: `id`, `target` (the ID of the annotated element), and `annotation_type` (one of eight values: container, separator, highlight, circle, underline, arrow, cloud, or strikethrough). An optional `content` field, which can be a string or null, stores the text attached to the annotation. For accessibility, this field is what converts a visual gesture (a red circle around a node) into a communicable description ("I circled this node because it is the most common source of bugs").
 
 ### Provenance
 
-Provenance is an optional top-level property — it is not listed in `required` because the static IR can be hand-authored (as the example codings f1, f2, and f3 are). When present, it records metadata about the AI pipeline that generated the IR, along with quality signals that let downstream consumers judge how much to trust the output.
+Provenance is a required top-level property. It records metadata about the AI pipeline that generated the IR, along with quality signals that let downstream consumers judge how much to trust the output.
 
-Provenance has four required fields. The `model` field records the LLM model identifier used to generate the IR (for example, "gemini-2.5-flash"). The `confidence` field references a shared `confidenceLevel` definition (high, medium, or low), providing a self-assessed quality signal from the model about the overall accuracy of the generated IR. The `visibility_issues` field is either a string describing problems that may have degraded the IR's accuracy (glare, hand occlusion, low resolution) or null when no issues were encountered — this was deliberately made nullable rather than using a string convention like "None" so that the absence of issues is structurally unambiguous. The `time_taken` field records the wall-clock duration of the analysis in MM:SS format, replacing `analysis_timestamp` as the required temporal field — how long the analysis took is more operationally useful than when it happened.
+Provenance has four required fields. The `model` field records the identifier of the model used to generate the IR (for example, "gemini-2.5-flash"). The `confidence` field references a shared `confidence_level` definition (high, medium, or low), providing a self-assessed quality signal about the overall accuracy of the generated IR. The `visibility_issues` field is either a string describing problems that may have degraded the IR's accuracy (glare, hand occlusion, low resolution) or null when no issues were encountered — this was deliberately made nullable rather than using a string convention like "None" so that the absence of issues is structurally unambiguous. The `time_taken` field records the wall-clock duration of the analysis in MM:SS format — how long the analysis took is more operationally useful than when it happened.
 
-Three optional fields support agentic pipeline runs. The `reasoning_steps` field is an integer recording how many reasoning steps the agentic pipeline executed. The `reasoning_process` field stores the model's intermediate reasoning trace as a raw string (or null when absent) — a string type was chosen over a structured object because agentic reasoning output is unpredictable in shape, and pretending it has structure would create a validation hole. The `analysis_timestamp` field, when present, records the ISO 8601 timestamp of when the analysis was produced.
+One optional field supports agentic pipeline runs: `reasoning_steps`, an integer recording how many reasoning steps the agentic pipeline executed.
+
+### Reasoning Process
+
+`reasoning_process` is an optional top-level property (a sibling of `elements`, `structure`, `state`, `semantics`, and `provenance`). It stores the model's intermediate reasoning trace as a raw string, or null when no reasoning was recorded. This field was deliberately separated from provenance — provenance describes *what* produced the IR and *how confident* it is, while the reasoning process captures *how* the model arrived at its interpretation. A string type was chosen over a structured object because agentic reasoning output is unpredictable in shape, and pretending it has structure would create a validation hole.
 
 ---
 
 ### Shared Definitions (`$defs`)
 
-At the bottom of the schema, the `$defs` section contains three reusable sub-schemas referenced throughout the document via `$ref`. The **position** definition is a simple object with two required numeric fields, x and y, representing a point in 2D space. It is used by node positions and can be referenced wherever spatial coordinates are needed. The **visualAttrs** definition is an object currently containing a single optional colour field. The **confidenceLevel** definition is a string enum constrained to "high", "medium", or "low", shared with the operation schema to maintain a consistent quality vocabulary across both schemas. All three definitions use `additionalProperties: false` to maintain the same strict approach as the rest of the schema. Abstracting these into `$defs` avoids duplication — any property that references position, visual attributes, or confidence levels points to the same definition, so a change in one place propagates everywhere.
+At the bottom of the schema, the `$defs` section contains three reusable sub-schemas referenced throughout the document via `$ref`. The **position** definition is a simple object with two required numeric fields, x and y, representing a point in 2D space. It is used by node positions and can be referenced wherever spatial coordinates are needed. The **visual_attrs** definition is an object currently containing a single optional colour field. The **confidence_level** definition is a string enum constrained to "high", "medium", or "low", shared with the operation schema to maintain a consistent quality vocabulary across both schemas. All three definitions use `additionalProperties: false` to maintain the same strict approach as the rest of the schema. Abstracting these into `$defs` avoids duplication — any property that references position, visual attributes, or confidence levels points to the same definition, so a change in one place propagates everywhere.
 
 ---
 
@@ -145,19 +157,15 @@ When representing hierarchical relationships, every descendant node must be list
 
 ## Operation Schema
 
-The operation schema (`operation-schema.json`) formalises the output of an LLM-based video analysis pipeline. Where the static schema captures what a flowchart looks like at a single point in time, the operation schema captures what an instructor does to a flowchart over the course of a lecture video. It was developed as part of an experiment using Google Gemini 2.5-Flash to analyse lecture recordings and automatically detect, classify, and describe every flowchart-related action performed by the instructor.
+The operation schema (`operation-schema.json`) formalises the output of a video analysis pipeline. Where the static schema captures what a flowchart looks like at a single point in time, the operation schema captures what an instructor does to a flowchart over the course of a lecture video — detecting, classifying, and describing every flowchart-related action performed by the instructor.
 
 ### Top-Level Structure
 
-The operation schema has three top-level properties: `metadata`, `reasoning_process`, and `analysis`. Only `metadata` and `analysis` are required. This three-part split separates provenance (how the analysis was produced) from reasoning (how the model thought) from findings (what was detected).
+The operation schema has two required top-level properties: `provenance` and `analysis`. This split separates provenance (how the analysis was produced and how confident it is) from findings (what was detected). The provenance object mirrors the static schema's provenance structure with additional video-specific fields, ensuring a consistent quality vocabulary across both schemas.
 
-### Document Metadata
+### Provenance
 
-Document metadata records the conditions under which the analysis was run. It has four required fields: `video_file` (the source video filename), `frame_rate` (the fps at which the video was sampled before being sent to the model — this is provenance only, since operations reference timestamps rather than frame numbers), `model` (the LLM model identifier), and `analysis_timestamp` (an ISO 8601 timestamp of when the analysis was produced). An optional `reasoning_steps` field records how many agentic reasoning steps were executed, present only when the agentic pipeline was used.
-
-### Reasoning Process
-
-The `reasoning_process` field stores the model's intermediate reasoning trace as a raw string, or null when no reasoning was recorded. This field is typed as `["string", "null"]` rather than accepting arbitrary objects or arrays — the reasoning output from agentic pipelines is unpredictable in structure, so storing it as a raw string avoids creating a validation hole in an otherwise strict schema.
+Provenance records the conditions under which the analysis was run and the quality signals associated with it. It has seven required fields. The first four — `model`, `confidence`, `visibility_issues`, and `time_taken` — mirror the static schema's provenance exactly, maintaining a consistent interface for downstream consumers. The remaining three are operation-specific: `video_file` (the source video filename), `frame_rate` (the fps at which the video was sampled — provenance only, since operations reference timestamps rather than frame numbers), and `analysis_timestamp` (an ISO 8601 timestamp of when the analysis was produced). An optional `reasoning_steps` field records how many agentic reasoning steps were executed, present only when the agentic pipeline was used.
 
 ### Analysis
 
@@ -165,13 +173,13 @@ The analysis object is the payload. It contains three required properties: `meta
 
 #### Analysis Metadata
 
-Analysis metadata describes the results themselves, distinct from the document metadata which describes the run. It has four required fields. The `video_duration` field records the total duration of the analysed segment in MM:SS format. The `total_operations_detected` field is an integer count that should match the length of the operations array — it serves as a redundant cross-check. The `analysis_confidence` field is a high/medium/low enum representing the model's overall self-assessed confidence. The `visibility_issues` field is either a descriptive string or null, documenting any video quality problems (glare, occlusion, low resolution) that may have affected the analysis.
+Analysis metadata describes the results themselves, distinct from provenance which describes the run. It has two required fields. The `video_duration` field records the total duration of the analysed segment in MM:SS format. The `total_operations_detected` field is an integer count that should match the length of the operations array — it serves as a redundant cross-check.
 
 #### Operations
 
 Operations is a chronologically ordered array. Each operation represents a single detected instructor action on a flowchart and carries eight required fields, making every detection heavily documented for auditability.
 
-The `operation_id` is a sequential integer starting from 1, implying chronological order. The `timestamp_start` and `timestamp_end` fields bound the action temporally in MM:SS or MM:SS.mmm format — start means the first visible change (first stroke), end means the completion (last stroke). The `operation_type` field classifies the action into one of five categories (defined below). The `confidence` field is a per-operation high/medium/low assessment, distinct from the overall analysis confidence.
+The `operation_id` is a sequential integer starting from 1, implying chronological order. The `timestamp_start` and `timestamp_end` fields bound the action temporally in MM:SS or MM:SS.mmm format — start means the first visible change (first stroke), end means the completion (last stroke). The `operation_type` field classifies the action into one of five categories (defined below). The `confidence` field is a per-operation high/medium/low assessment, distinct from the overall confidence in provenance.
 
 The `physical_action` object captures what the instructor physically did — a natural language `description` and a `tool_used` field constrained to an enum of six values: marker, digital pen, eraser, pointer, slide transition, or other. Physical action is separated from semantic meaning because the same physical gesture (drawing a circle) could be an ADDITION (new node) or a HIGHLIGHTING (circling an existing node), so physical action alone does not determine classification.
 
@@ -219,7 +227,7 @@ The five types are disambiguated through a decision tree. First: is there any pr
 
 ### Shared Definitions (`$defs`) — Operation Schema
 
-The operation schema's `$defs` section contains reusable sub-schemas that parallel the static schema's approach. **ConfidenceLevel** is a string enum (high, medium, low) referenced by both the overall analysis confidence and per-operation confidence fields — the same vocabulary as the static schema's `confidenceLevel` definition, ensuring consistency across both schemas. **OperationType** encodes the five-class taxonomy as a string enum with a description that summarises all five types. The remaining definitions — **PhysicalAction**, **ClassificationReasoning**, **ContentDescription**, **VisualEvidence**, **DocumentMetadata**, **AnalysisMetadata**, **Operation**, **Analysis**, and **Summary** — are each defined once and referenced via `$ref` to avoid duplication within the schema.
+The operation schema's `$defs` section contains reusable sub-schemas that parallel the static schema's approach. **confidence_level** is a string enum (high, medium, low) referenced by both the provenance confidence and per-operation confidence fields — the same vocabulary as the static schema's `confidence_level` definition, ensuring consistency across both schemas. **operation_type** encodes the five-class taxonomy as a string enum with a description that summarises all five types. The remaining definitions — **provenance**, **analysis**, **analysis_metadata**, **operation**, **physical_action**, **classification_reasoning**, **content_description**, **visual_evidence**, and **summary** — are each defined once and referenced via `$ref` to avoid duplication within the schema.
 
 ---
 
@@ -333,3 +341,23 @@ stateDiagram-v2
     E --> B : ω / ε
 ```
 *Figure 1. Mealy machine for the integration protocol. Transition labels are input / output. States B and I are quiescent (no operation in progress); states O and E are transient (an operation is active).*
+
+<details>
+<summary>Text description of Figure 1 (for screen readers and non-visual access)</summary>
+
+The diagram is a state machine with four states and nine transitions.
+
+**States:** Blank (B), Idle (I), Operating (O), Erasing (E). The initial state is Blank.
+
+**Transitions:**
+- Blank to Operating: on CREATION start, output an operation entry (P).
+- Blank to Blank (self-loop): on idle time, no output.
+- Idle to Operating: on ADDITION, HIGHLIGHTING, or ERASURE start, output a static snapshot then an operation entry (S·P).
+- Idle to Erasing: on COMPLETE_ERASURE start, output a static snapshot then an operation entry (S·P).
+- Idle to Idle (self-loop): on idle time, output a static snapshot (S).
+- Operating to Idle: on operation completion, output a static snapshot (S).
+- Erasing to Blank: on operation completion, no output.
+
+**Reading the diagram:** Blank and Idle are rest states — the system waits for an event. Operating and Erasing are transient — the system is inside an active operation. Every non-destructive operation returns to Idle (the flowchart survives); complete erasure returns to Blank (the board is empty).
+
+</details>
